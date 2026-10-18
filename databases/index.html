@@ -1,0 +1,278 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Chikeziri Ohaeri computer science capstone portfolio"><title>Database integrity and indexed search | Chikeziri Ohaeri</title><link rel="stylesheet" href="../style.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Portfolio"><a href="../index.html">Self-assessment</a><a href="../code-review/index.html">Code review</a><a href="../software-design/index.html">Software design</a><a href="../algorithms/index.html">Algorithms</a><a href="../databases/index.html">Databases</a><a href="../evidence.html">Evidence</a></nav><p class="eyebrow">Chikeziri Ohaeri · CS 499 · October 2026</p><h1>Database integrity and indexed search</h1><p class="intro"></p></header><main id="main"><nav aria-label="Page sections"><a href="#narrative">Narrative</a><a href="#source">Compare code</a><a href="#downloads">Downloads</a></nav><section class="downloads" id="downloads"><h2>Artifact files</h2><p><a href="downloads/5-2 Database Artifact.zip">Original and enhanced source ZIP</a> · <a href="Database Narrative.docx">Word narrative</a></p><p>The ZIP contains full source and verification evidence. Code excerpts below are readable without downloading. This static portfolio presents the application; it does not run the backend.</p></section><article id="narrative"><p>Chikeziri Ohaeri<br>CS 499 | 5-2 Milestone Four Narrative | October 18, 2026</p>
+<h2>Artifact and Selection</h2>
+<p>Travlr Getaways is my MongoDB, Express, Angular, and Node.js project from CS 465. The original project was completed in August 2026; this database enhancement was prepared on October 11, 2026. I selected the same artifact used for the software design and algorithms milestones because it makes the connection between HTTP requests, application logic, and persistent data visible. The original source is preserved separately from the cumulative enhanced version.</p>
+<h2>Planned Enhancement</h2>
+<p>My approved Module One plan called for stronger persistent validation and an evidence-based review of MongoDB indexes. The earlier application validated requests at the service boundary, but a direct database write could bypass those rules. The new explicit setup script installs a collection validator with strict validation and rejection of invalid writes. It checks required fields, types, lengths, price format and bounds, coherent nights/days, and safe image filenames. Mongoose rules provide earlier feedback, while the collection validator protects native writes. MongoDB documents that validationAction controls whether an invalid document is rejected or only logged (MongoDB, n.d.-a).</p>
+<h2>Query Design</h2>
+<p>A new read-only endpoint and browser form search an exact resort and an inclusive departure-date range, with at most 100 results. The repository sorts by start date and trip code. The compound index { resort: 1, start: 1, code: 1 } follows the equality prefix with the ordered date field and a deterministic tie-breaker. MongoDB’s index-order guidance informed this design, but the actual query plan was checked rather than assuming that the index would be selected (MongoDB, n.d.-b). The pre-existing code and name indexes are retained. Price remains a validated string to preserve the existing client contract; this index does not accelerate numeric price queries or heap recommendations.</p>
+<h2>Verification and Measured Results</h2>
+<p>The isolated verification used real MongoDB 8.2.6 with 30,000 generated records and three query cases. Before the new index, the selective-month query examined 30,000 documents and used a collection scan with a blocking sort. After installation, it examined 20 documents and 20 keys to return the same 20 ordered results, using an index scan without a blocking sort. Across five explain runs per condition, the median reported execution time for this case changed from 7 ms to 0 ms. The capped full-year query examined 100 documents instead of 30,000, and the nonexistent-resort query examined zero instead of 30,000. All three before/after result lists matched.</p>
+<h2>Tradeoffs and Limits</h2>
+<p>Total reported index storage grew from 745,472 to 1,581,056 bytes in this fixture. Additional index entries must also be maintained on writes, although write throughput was not benchmarked. The experiment uses one synthetic data distribution and sequential before/after runs, so cache effects, machine load, and timer resolution limit timing conclusions. Zero-millisecond values mean the timer did not resolve the operation; they do not mean the operation was free. Examined-document counts and plan stages provide stronger evidence here than a general speedup claim. The whole response still fetches the returned documents, and broad queries require workload-specific evaluation.</p>
+<h2>Testing and Learning</h2>
+<p>All 34 backend tests passed. The database harness passed 25 checks covering direct-write rejection, duplicate codes, failed-update preservation, idempotent setup, date boundaries, query rejection, empty results, and persistence after reconnecting. A separate 17-check live regression run confirmed authenticated CRUD and the existing ranking behavior with the collection constraints installed. Chrome showed ordered search results and an explicit empty state. The Angular source is unchanged from the previously verified Module Four version; no new Angular build is claimed. The main lesson was that API validation and persistent integrity solve different problems. A second challenge was keeping legacy string fields compatible while validating their meaning. Native-write tests exposed the cases that service-only tests cannot cover.</p>
+<h2>Deployment and Security</h2>
+<p>The installer requires an explicit MONGODB_URI and is never run automatically on application startup. It audits existing records and stops if it finds invalid ones; it does not delete or silently repair them. Installation requires suitable database administration permissions and a controlled maintenance window if writers are active. Its index and validator operations are not a multi-step transaction. The deployed application should use a separate least-privilege database account without permission to bypass validation. Search parameters are allowlisted scalars, limits are bounded, returned text is safely displayed, and database connection strings are no longer printed. The inherited public registration and coarse write-permission model still require production hardening.</p>
+<h2>Course Outcomes and Feedback</h2>
+<p>The enhancement fulfills the planned database work and strengthens outcome 4 through a functioning database-backed search and outcome 5 through persistent integrity controls. Query-plan comparison also supports outcome 3, while the narrative, comments, and reproducible evidence support outcome 2. The approved plan and instructor feedback contribute to outcome 1. My coverage plan remains the same: use the three related enhancements as cumulative evidence, presented together in the final portfolio and professional self-assessment. The software-design feedback was positive, and the algorithms milestone earned 40/40 with no major improvement requested. No database milestone feedback is recorded as of October 18, 2026; no instructor approval of this enhancement is claimed.</p>
+<p>AI use acknowledgment: OpenAI Codex assisted with research, drafting, code development, and document preparation. I am responsible for reviewing the work, understanding the implementation, and ensuring that the final submission accurately reflects my experience.</p>
+<h2>References</h2>
+<p>MongoDB. (n.d.-a). Choose how to handle invalid documents [Database manual]. Retrieved October 11, 2026, from https://www.mongodb.com/docs/manual/core/schema-validation/handle-invalid-documents/</p>
+<p>MongoDB. (n.d.-b). The ESR (Equality, Sort, Range) guideline [Database manual]. Retrieved October 11, 2026, from https://www.mongodb.com/docs/manual/tutorial/equality-sort-range-guideline/</p></article><h2>Database search in the browser</h2><img src="downloads/search-results.png" alt="Resort and departure date search showing ordered matching trips"><p><a href="downloads/search-empty.png">View the empty result state</a> · <a href="downloads/database-verification.json">Read the measured query plans and validation checks</a></p><section id="source"><h2>Original and enhanced code</h2><details><summary>Original controller</summary><pre><code>const Trip = require(&#x27;../models/travlr&#x27;);
+
+const tripFields = [
+  &#x27;code&#x27;,
+  &#x27;name&#x27;,
+  &#x27;length&#x27;,
+  &#x27;start&#x27;,
+  &#x27;resort&#x27;,
+  &#x27;perPerson&#x27;,
+  &#x27;image&#x27;,
+  &#x27;description&#x27;,
+];
+
+function tripPayload(body = {}) {
+  return tripFields.reduce((payload, field) =&gt; {
+    if (body[field] !== undefined) {
+      payload[field] = body[field];
+    }
+    return payload;
+  }, {});
+}
+
+function requiredFieldsMissing(payload) {
+  return tripFields.filter((field) =&gt; (
+    payload[field] === undefined
+    || payload[field] === null
+    || (typeof payload[field] === &#x27;string&#x27; &amp;&amp; payload[field].trim() === &#x27;&#x27;)
+  ));
+}
+
+function databaseError(res, error, action) {
+  if (error?.name === &#x27;ValidationError&#x27; || error?.name === &#x27;CastError&#x27;) {
+    return res.status(400).json({ message: &#x27;Invalid trip data&#x27;, details: error.message });
+  }
+
+  if (error?.code === 11000) {
+    return res.status(409).json({ message: &#x27;A trip with that code already exists&#x27; });
+  }
+
+  return res.status(500).json({ message: `Unable to ${action} trip` });
+}
+
+function createTripsController(TripModel) {
+  async function tripsList(req, res) {
+    try {
+      const trips = await TripModel.find({});
+
+      if (trips.length === 0) {
+        return res.status(404).json({ message: &#x27;No trips found&#x27; });
+      }
+
+      return res.status(200).json(trips);
+    } catch (error) {
+      return res.status(500).json({ message: &#x27;Unable to retrieve trips&#x27; });
+    }
+  }
+
+  async function tripsFindByCode(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    try {
+      const trip = await TripModel.findOne({ code: tripCode });
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json(trip);
+    } catch (error) {
+      return res.status(500).json({ message: &#x27;Unable to retrieve trip&#x27; });
+    }
+  }
+
+  async function tripsAddTrip(req, res) {
+    const payload = tripPayload(req.body);
+    const missingFields = requiredFieldsMissing(payload);
+
+    if (missingFields.length &gt; 0) {
+      return res.status(400).json({
+        message: `Missing required trip fields: ${missingFields.join(&#x27;, &#x27;)}`,
+      });
+    }
+
+    try {
+      const trip = await TripModel.create(payload);
+      return res.status(201).json(trip);
+    } catch (error) {
+      return databaseError(res, error, &#x27;create&#x27;);
+    }
+  }
+
+  async function tripsUpdateTrip(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    const payload = tripPayload(req.body);
+    const missingFields = requiredFieldsMissing(payload);
+
+    if (missingFields.length &gt; 0) {
+      return res.status(400).json({
+        message: `Missing required trip fields: ${missingFields.join(&#x27;, &#x27;)}`,
+      });
+    }
+
+    try {
+      const trip = await TripModel.findOneAndUpdate(
+        { code: tripCode },
+        payload,
+        { returnDocument: &#x27;after&#x27;, runValidators: true },
+      );
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json(trip);
+    } catch (error) {
+      return databaseError(res, error, &#x27;update&#x27;);
+    }
+  }
+
+  async function tripsDeleteTrip(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    try {
+      const trip = await TripModel.findOneAndDelete({ code: tripCode });
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json({ message: `Trip ${tripCode} deleted` });
+    } catch (error) {
+      return databaseError(res, error, &#x27;delete&#x27;);
+    }
+  }
+
+  return {
+    tripsList,
+    tripsFindByCode,
+    tripsAddTrip,
+    tripsUpdateTrip,
+    tripsDeleteTrip,
+  };
+}
+
+module.exports = {
+  ...createTripsController(Trip),
+  createTripsController,
+};
+</code></pre></details><details><summary>Enhanced app_api/database/constraints.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 5 | 2026-10-11 | v1
+ * AI-assisted persistent validation and measured search index.
+ * Explicit installation avoids changing an existing database on app startup.
+ */
+const text = (maxLength) =&gt; ({ bsonType: &#x27;string&#x27;, minLength: 1, maxLength, pattern: &#x27;\\S&#x27; });
+const asString = (field) =&gt; ({ $convert: { input: field, to: &#x27;string&#x27;, onError: &#x27;&#x27;, onNull: &#x27;&#x27; } });
+const numberMatch = (regex) =&gt; ({ $convert: {
+  input: { $getField: { field: &#x27;match&#x27;, input: { $regexFind: { input: asString(&#x27;$length&#x27;), regex } } } },
+  to: &#x27;int&#x27;, onError: -1, onNull: -1,
+} });
+// Extract the first integer and the integer following the slash separately.
+const nights = numberMatch(&#x27;^[0-9]+&#x27;);
+const days = { $convert: { input: { $arrayElemAt: [{ $ifNull: [{ $getField: {
+  field: &#x27;captures&#x27;, input: { $regexFind: { input: asString(&#x27;$length&#x27;), regex: &#x27;/\\s*([0-9]+) days?$&#x27; } },
+} }, []] }, 0] }, to: &#x27;int&#x27;, onError: -1, onNull: -1 } };
+const numericPrice = { $convert: { input: &#x27;$perPerson&#x27;, to: &#x27;double&#x27;, onError: -1, onNull: -1 } };
+const validator = { $and: [
+  { $jsonSchema: { bsonType: &#x27;object&#x27;, required: [&#x27;code&#x27;,&#x27;name&#x27;,&#x27;length&#x27;,&#x27;start&#x27;,&#x27;resort&#x27;,&#x27;perPerson&#x27;,&#x27;image&#x27;,&#x27;description&#x27;], properties: {
+    code: { bsonType: &#x27;string&#x27;, pattern: &#x27;^[A-Za-z0-9_-]{1,40}$&#x27; },
+    name: text(200), resort: text(200), description: text(5000),
+    length: { bsonType: &#x27;string&#x27;, maxLength: 40, pattern: &#x27;^[0-9]+ nights?\\s*/\\s*[0-9]+ days?$&#x27; },
+    start: { bsonType: &#x27;date&#x27; },
+    perPerson: { bsonType: &#x27;string&#x27;, pattern: &#x27;^[0-9]{1,7}(\\.[0-9]{1,2})?$&#x27; },
+    image: { bsonType: &#x27;string&#x27;, maxLength: 100, pattern: &#x27;^[A-Za-z0-9_-]+\\.([jJ][pP][gG]|[jJ][pP][eE][gG]|[pP][nN][gG]|[wW][eE][bB][pP])$&#x27; },
+  } } },
+  { $expr: { $and: [
+    { $gte: [numericPrice, 0] }, { $lte: [numericPrice, 1000000] },
+    { $gte: [days, 1] }, { $lte: [days, 366] }, { $eq: [nights, { $subtract: [days, 1] }] },
+  ] } },
+] };
+const searchIndex = { resort: 1, start: 1, code: 1 };
+const searchIndexName = &#x27;resort_start_code&#x27;;
+async function installConstraints(db) {
+  const exists = await db.listCollections({ name: &#x27;trips&#x27; }).hasNext();
+  if (!exists) await db.createCollection(&#x27;trips&#x27;, { validator, validationLevel: &#x27;strict&#x27;, validationAction: &#x27;error&#x27; });
+  const collection = db.collection(&#x27;trips&#x27;);
+  // Audit before tightening an existing collection. Never delete or silently repair data.
+  const invalid = await collection.find({ $nor: [validator] }, { projection: { _id: 1 } }).limit(20).toArray();
+  if (invalid.length) throw new Error(&#x27;Existing trips fail validation; review and repair them before installing constraints. No records were modified.&#x27;);
+  await collection.createIndex({ code: 1 }, { unique: true, name: &#x27;code_1&#x27; });
+  await db.command({ collMod: &#x27;trips&#x27;, validator, validationLevel: &#x27;strict&#x27;, validationAction: &#x27;error&#x27; });
+  await collection.createIndex(searchIndex, { name: searchIndexName });
+  return { indexes: await collection.listIndexes().toArray(), validationLevel: &#x27;strict&#x27;, validationAction: &#x27;error&#x27; };
+}
+module.exports = { validator, searchIndex, searchIndexName, installConstraints };
+</code></pre></details><details><summary>Enhanced app_api/repositories/trips.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 3 | 2026-09-27
+ * AI-assisted Mongoose adapter. Services depend on this contract, not queries.
+ */
+function createTripsRepository(Trip) {
+  return {
+    // Module 5: equality prefix, date range and deterministic indexed ordering.
+    search: ({ resort, from, until, limit }) =&gt; Trip.find({ resort, start: { $gte: from, $lt: until } })
+      .sort({ start: 1, code: 1 }).limit(limit).lean(),
+    list: () =&gt; Trip.find({}),
+    find: (code) =&gt; Trip.findOne({ code }),
+    create: (payload) =&gt; Trip.create(payload),
+    update: (code, payload) =&gt; Trip.findOneAndUpdate({ code }, payload, { returnDocument: &#x27;after&#x27;, runValidators: true }),
+    remove: (code) =&gt; Trip.findOneAndDelete({ code }),
+  };
+}
+module.exports = { createTripsRepository };
+</code></pre></details><details><summary>Enhanced app_api/validation/search.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 5 | 2026-10-11 | v1
+ * AI-assisted allowlist; scalar inputs only, exact resort, bounded results.
+ */
+const { ApiError } = require(&#x27;../errors/api-error&#x27;);
+function searchOptions(query) {
+  const fail = () =&gt; { throw new ApiError(400, &#x27;INVALID_SEARCH&#x27;, &#x27;Use an exact resort, valid from/to dates (YYYY-MM-DD), and limit from 1 to 100&#x27;); };
+  if (!query || Object.keys(query).some(k =&gt; ![&#x27;resort&#x27;,&#x27;from&#x27;,&#x27;to&#x27;,&#x27;limit&#x27;].includes(k))) fail();
+  if (typeof query.resort !== &#x27;string&#x27; || !query.resort.trim() || query.resort.trim().length &gt; 200) fail();
+  const parse = value =&gt; {
+    if (typeof value !== &#x27;string&#x27; || !/^\d{4}-\d{2}-\d{2}$/.test(value)) fail();
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== value) fail();
+    return date;
+  };
+  const from = parse(query.from), to = parse(query.to);
+  if (from &gt; to) fail();
+  const limitText = query.limit === undefined ? &#x27;20&#x27; : query.limit;
+  if (typeof limitText !== &#x27;string&#x27; || !/^[1-9]\d{0,2}$/.test(limitText) || Number(limitText) &gt; 100) fail();
+  // Inclusive dates are implemented with an exclusive next-midnight bound.
+  return { resort: query.resort.trim(), from, until: new Date(to.getTime() + 86400000), limit: Number(limitText) };
+}
+module.exports = { searchOptions };
+</code></pre></details><details><summary>Enhanced scripts/install-database.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 5 | 2026-10-11 | v1
+ * AI-assisted explicit database setup. Requires a deliberate URI; never uses .env.
+ */
+const mongoose = require(&#x27;mongoose&#x27;);
+const { installConstraints } = require(&#x27;../app_api/database/constraints&#x27;);
+(async () =&gt; {
+  if (!process.env.MONGODB_URI) throw new Error(&#x27;Set MONGODB_URI explicitly to the intended database&#x27;);
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    const result = await installConstraints(mongoose.connection.db);
+    console.log(JSON.stringify({ installed: true, indexNames: result.indexes.map(x =&gt; x.name) }));
+  } finally { await mongoose.disconnect(); }
+})().catch(error =&gt; { console.error(error.message); process.exitCode = 1; });
+</code></pre></details></section></main><footer>Computer Science Capstone · Southern New Hampshire University<br>AI assistance is acknowledged in the narratives, self-assessment, and code review.</footer></body></html>

@@ -1,0 +1,775 @@
+{
+  "date": "2026-10-12T02:27:26.327Z",
+  "node": "v24.19.0",
+  "fixtureCount": 30000,
+  "checks": [
+    {
+      "label": "indexed and baseline searches have identical ordering in all three cases",
+      "passed": true
+    },
+    {
+      "label": "setup is idempotent and retains pre-existing indexes",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: negative price",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: price above maximum",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: numeric price type",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: excess precision",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: incoherent duration",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: zero days",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: excess days",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: missing resort",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: date stored as text",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: invalid image",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: oversized name",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: whitespace name",
+      "passed": true
+    },
+    {
+      "label": "native insert rejected: operator object",
+      "passed": true
+    },
+    {
+      "label": "native invalid update is rejected without modifying saved value",
+      "passed": true
+    },
+    {
+      "label": "native duplicate code rejected by unique index",
+      "passed": true
+    },
+    {
+      "label": "inclusive date upper boundary and tied-date code order",
+      "passed": true
+    },
+    {
+      "label": "HTTP search exact resort, upper date boundary, stable ties",
+      "passed": true
+    },
+    {
+      "label": "HTTP search injection rejected with safe message",
+      "passed": true
+    },
+    {
+      "label": "HTTP empty search returns 200 and empty list",
+      "passed": true
+    },
+    {
+      "label": "search page is served",
+      "passed": true
+    },
+    {
+      "label": "Mongoose rejects invalid direct document",
+      "passed": true
+    },
+    {
+      "label": "existing invalid collection stops installer without altering records",
+      "passed": true
+    },
+    {
+      "label": "data persists across connection close and reopen",
+      "passed": true
+    }
+  ],
+  "cases": [
+    {
+      "label": "selective month",
+      "before": {
+        "samples": [
+          {
+            "returned": 20,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 13,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 8,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          }
+        ],
+        "codes": [
+          "DB003107",
+          "DB003207",
+          "DB003307",
+          "DB003407",
+          "DB003507",
+          "DB003607",
+          "DB003707",
+          "DB003807",
+          "DB003907",
+          "DB004007",
+          "DB004107",
+          "DB004207",
+          "DB004307",
+          "DB004407",
+          "DB004507",
+          "DB004607",
+          "DB004707",
+          "DB004807",
+          "DB004907",
+          "DB005007"
+        ]
+      },
+      "after": {
+        "samples": [
+          {
+            "returned": 20,
+            "documentsExamined": 20,
+            "keysExamined": 20,
+            "executionTimeMillis": 1,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 20,
+            "keysExamined": 20,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 20,
+            "keysExamined": 20,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 20,
+            "keysExamined": 20,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 20,
+            "documentsExamined": 20,
+            "keysExamined": 20,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          }
+        ],
+        "codes": [
+          "DB003107",
+          "DB003207",
+          "DB003307",
+          "DB003407",
+          "DB003507",
+          "DB003607",
+          "DB003707",
+          "DB003807",
+          "DB003907",
+          "DB004007",
+          "DB004107",
+          "DB004207",
+          "DB004307",
+          "DB004407",
+          "DB004507",
+          "DB004607",
+          "DB004707",
+          "DB004807",
+          "DB004907",
+          "DB005007"
+        ]
+      }
+    },
+    {
+      "label": "full year capped",
+      "before": {
+        "samples": [
+          {
+            "returned": 100,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 8,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          }
+        ],
+        "codes": [
+          "DB000007",
+          "DB000107",
+          "DB000207",
+          "DB000307",
+          "DB000407",
+          "DB000507",
+          "DB000607",
+          "DB000707",
+          "DB000807",
+          "DB000907",
+          "DB001007",
+          "DB001107",
+          "DB001207",
+          "DB001307",
+          "DB001407",
+          "DB001507",
+          "DB001607",
+          "DB001707",
+          "DB001807",
+          "DB001907",
+          "DB002007",
+          "DB002107",
+          "DB002207",
+          "DB002307",
+          "DB002407",
+          "DB002507",
+          "DB002607",
+          "DB002707",
+          "DB002807",
+          "DB002907",
+          "DB003007",
+          "DB003107",
+          "DB003207",
+          "DB003307",
+          "DB003407",
+          "DB003507",
+          "DB003607",
+          "DB003707",
+          "DB003807",
+          "DB003907",
+          "DB004007",
+          "DB004107",
+          "DB004207",
+          "DB004307",
+          "DB004407",
+          "DB004507",
+          "DB004607",
+          "DB004707",
+          "DB004807",
+          "DB004907",
+          "DB005007",
+          "DB005107",
+          "DB005207",
+          "DB005307",
+          "DB005407",
+          "DB005507",
+          "DB005607",
+          "DB005707",
+          "DB005807",
+          "DB005907",
+          "DB006007",
+          "DB006107",
+          "DB006207",
+          "DB006307",
+          "DB006407",
+          "DB006507",
+          "DB006607",
+          "DB006707",
+          "DB006807",
+          "DB006907",
+          "DB007007",
+          "DB007107",
+          "DB007207",
+          "DB007307",
+          "DB007407",
+          "DB007507",
+          "DB007607",
+          "DB007707",
+          "DB007807",
+          "DB007907",
+          "DB008007",
+          "DB008107",
+          "DB008207",
+          "DB008307",
+          "DB008407",
+          "DB008507",
+          "DB008607",
+          "DB008707",
+          "DB008807",
+          "DB008907",
+          "DB009007",
+          "DB009107",
+          "DB009207",
+          "DB009307",
+          "DB009407",
+          "DB009507",
+          "DB009607",
+          "DB009707",
+          "DB009807",
+          "DB009907"
+        ]
+      },
+      "after": {
+        "samples": [
+          {
+            "returned": 100,
+            "documentsExamined": 100,
+            "keysExamined": 100,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 100,
+            "keysExamined": 100,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 100,
+            "keysExamined": 100,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 100,
+            "keysExamined": 100,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 100,
+            "documentsExamined": 100,
+            "keysExamined": 100,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          }
+        ],
+        "codes": [
+          "DB000007",
+          "DB000107",
+          "DB000207",
+          "DB000307",
+          "DB000407",
+          "DB000507",
+          "DB000607",
+          "DB000707",
+          "DB000807",
+          "DB000907",
+          "DB001007",
+          "DB001107",
+          "DB001207",
+          "DB001307",
+          "DB001407",
+          "DB001507",
+          "DB001607",
+          "DB001707",
+          "DB001807",
+          "DB001907",
+          "DB002007",
+          "DB002107",
+          "DB002207",
+          "DB002307",
+          "DB002407",
+          "DB002507",
+          "DB002607",
+          "DB002707",
+          "DB002807",
+          "DB002907",
+          "DB003007",
+          "DB003107",
+          "DB003207",
+          "DB003307",
+          "DB003407",
+          "DB003507",
+          "DB003607",
+          "DB003707",
+          "DB003807",
+          "DB003907",
+          "DB004007",
+          "DB004107",
+          "DB004207",
+          "DB004307",
+          "DB004407",
+          "DB004507",
+          "DB004607",
+          "DB004707",
+          "DB004807",
+          "DB004907",
+          "DB005007",
+          "DB005107",
+          "DB005207",
+          "DB005307",
+          "DB005407",
+          "DB005507",
+          "DB005607",
+          "DB005707",
+          "DB005807",
+          "DB005907",
+          "DB006007",
+          "DB006107",
+          "DB006207",
+          "DB006307",
+          "DB006407",
+          "DB006507",
+          "DB006607",
+          "DB006707",
+          "DB006807",
+          "DB006907",
+          "DB007007",
+          "DB007107",
+          "DB007207",
+          "DB007307",
+          "DB007407",
+          "DB007507",
+          "DB007607",
+          "DB007707",
+          "DB007807",
+          "DB007907",
+          "DB008007",
+          "DB008107",
+          "DB008207",
+          "DB008307",
+          "DB008407",
+          "DB008507",
+          "DB008607",
+          "DB008707",
+          "DB008807",
+          "DB008907",
+          "DB009007",
+          "DB009107",
+          "DB009207",
+          "DB009307",
+          "DB009407",
+          "DB009507",
+          "DB009607",
+          "DB009707",
+          "DB009807",
+          "DB009907"
+        ]
+      }
+    },
+    {
+      "label": "empty resort",
+      "before": {
+        "samples": [
+          {
+            "returned": 0,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 30000,
+            "keysExamined": 0,
+            "executionTimeMillis": 7,
+            "stages": [
+              "SORT",
+              "COLLSCAN"
+            ]
+          }
+        ],
+        "codes": []
+      },
+      "after": {
+        "samples": [
+          {
+            "returned": 0,
+            "documentsExamined": 0,
+            "keysExamined": 0,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 0,
+            "keysExamined": 0,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 0,
+            "keysExamined": 0,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 0,
+            "keysExamined": 0,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          },
+          {
+            "returned": 0,
+            "documentsExamined": 0,
+            "keysExamined": 0,
+            "executionTimeMillis": 0,
+            "stages": [
+              "LIMIT",
+              "FETCH",
+              "IXSCAN"
+            ]
+          }
+        ],
+        "codes": []
+      }
+    }
+  ],
+  "notes": "Synthetic data; query explain time is not end-to-end latency. Millisecond timers may read zero. No production workload claims.",
+  "mongoVersion": "8.2.6",
+  "indexesBefore": [
+    {
+      "v": 2,
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_"
+    },
+    {
+      "v": 2,
+      "key": {
+        "code": 1
+      },
+      "name": "code_1",
+      "unique": true
+    },
+    {
+      "v": 2,
+      "key": {
+        "name": 1
+      },
+      "name": "name_1"
+    }
+  ],
+  "indexBytesBefore": 745472,
+  "install": {
+    "indexes": [
+      {
+        "v": 2,
+        "key": {
+          "_id": 1
+        },
+        "name": "_id_"
+      },
+      {
+        "v": 2,
+        "key": {
+          "code": 1
+        },
+        "name": "code_1",
+        "unique": true
+      },
+      {
+        "v": 2,
+        "key": {
+          "name": 1
+        },
+        "name": "name_1"
+      },
+      {
+        "v": 2,
+        "key": {
+          "resort": 1,
+          "start": 1,
+          "code": 1
+        },
+        "name": "resort_start_code"
+      }
+    ],
+    "validationLevel": "strict",
+    "validationAction": "error"
+  },
+  "indexBytesAfter": 1581056,
+  "baseUrl": "http://127.0.0.1:64105",
+  "passed": true,
+  "completedAt": "2026-10-12T02:27:28.084Z"
+}

@@ -1,0 +1,189 @@
+{
+  "startedAt": "2026-10-12T02:29:11.720Z",
+  "node": "v24.19.0",
+  "mode": "Real temporary MongoDB, real Express application, generated test records",
+  "checks": [
+    {
+      "label": "register generated test account",
+      "method": "POST",
+      "route": "/api/register",
+      "expected": 201,
+      "actual": 201,
+      "passed": true
+    },
+    {
+      "label": "login generated test account",
+      "method": "POST",
+      "route": "/api/login",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "unauthenticated create rejected",
+      "method": "POST",
+      "route": "/api/trips",
+      "expected": 401,
+      "actual": 401,
+      "passed": true
+    },
+    {
+      "label": "create",
+      "method": "POST",
+      "route": "/api/trips",
+      "expected": 201,
+      "actual": 201,
+      "passed": true
+    },
+    {
+      "label": "MongoDB unique index conflict",
+      "method": "POST",
+      "route": "/api/trips",
+      "expected": 409,
+      "actual": 409,
+      "passed": true
+    },
+    {
+      "label": "read persisted trip",
+      "method": "GET",
+      "route": "/api/trips/TEST001",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "update",
+      "method": "PUT",
+      "route": "/api/trips/TEST001",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "negative price rejected",
+      "method": "PUT",
+      "route": "/api/trips/TEST001",
+      "expected": 400,
+      "actual": 400,
+      "passed": true
+    },
+    {
+      "label": "persisted update after database reconnect and HTTP restart",
+      "method": "GET",
+      "route": "/api/trips/TEST001",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "delete",
+      "method": "DELETE",
+      "route": "/api/trips/TEST001",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "deleted record absent",
+      "method": "GET",
+      "route": "/api/trips/TEST001",
+      "expected": 404,
+      "actual": 404,
+      "passed": true
+    },
+    {
+      "label": "create demonstration fixture GALR210214",
+      "method": "POST",
+      "route": "/api/trips",
+      "expected": 201,
+      "actual": 201,
+      "passed": true
+    },
+    {
+      "label": "create demonstration fixture DAWR210315",
+      "method": "POST",
+      "route": "/api/trips",
+      "expected": 201,
+      "actual": 201,
+      "passed": true
+    },
+    {
+      "label": "create demonstration fixture CLAR210621",
+      "method": "POST",
+      "route": "/api/trips",
+      "expected": 201,
+      "actual": 201,
+      "passed": true
+    },
+    {
+      "label": "customer page renders MongoDB trips",
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "rank persisted trips",
+      "method": "GET",
+      "route": "/api/trips/recommendations?budget=1500&days=5&k=2",
+      "expected": 200,
+      "actual": 200,
+      "passed": true
+    },
+    {
+      "label": "invalid ranking query rejected",
+      "method": "GET",
+      "route": "/api/trips/recommendations?budget=-1&days=5&k=2",
+      "expected": 400,
+      "actual": 400,
+      "passed": true
+    }
+  ],
+  "ranking": {
+    "results": [
+      {
+        "trip": {
+          "_id": "6acc45f8272c7ec78ba57507",
+          "code": "GALR210214",
+          "name": "Gale Reef",
+          "length": "4 nights / 5 days",
+          "start": "2021-02-14T08:00:00.000Z",
+          "resort": "Emerald Bay, 3 stars",
+          "perPerson": "799.00",
+          "image": "reef1.jpg",
+          "description": "<p>Gale Reef Sed et augue lorem. In sit amet placerat arcu. Mauris volutpat ipsum ac justo mollis vel vestibulum orci gravida. Vestibulum sit amet porttitor odio. Nulla facilisi. Fusce at pretium felis. Sed consequat libero ut turpis venenatis ut aliquam risus semper. Etiam convallis mi vel risus pretium sodales. Etiam nunc lorem ullamcorper vitae laoreet.</p>",
+          "__v": 0
+        },
+        "score": 0.6804000000000001
+      },
+      {
+        "trip": {
+          "_id": "6acc45f8272c7ec78ba57508",
+          "code": "DAWR210315",
+          "name": "Dawson's Reef",
+          "length": "4 nights / 5 days",
+          "start": "2021-03-15T08:00:00.000Z",
+          "resort": "Blue Lagoon, 4 stars",
+          "perPerson": "1199.00",
+          "image": "reef2.jpg",
+          "description": "<p>Dawson's Reef Integer magna leo, posuere et dignissim vitae, porttitor at odio. Pellentesque a metus nec magna placerat volutpat. Nunc nisi mi, elementum sit amet aliquet quis, tristique quis nisl. Curabitur odio lacus, blandit ut hendrerit vulputate, vulputate at est. Morbi aliquet viverra metus eu consectetur. In lorem dui, elementum sit amet convallis ac, tincidunt vel sapien.</p>",
+          "__v": 0
+        },
+        "score": 0.5204
+      }
+    ],
+    "stats": {
+      "examined": 3,
+      "eligible": 2,
+      "maxRetained": 2,
+      "comparisons": 2
+    },
+    "preferences": {
+      "budget": 1500,
+      "days": 5,
+      "k": 2
+    }
+  },
+  "mongoVersion": "8.2.6",
+  "completedAt": "2026-10-12T02:29:12.327Z",
+  "passed": true,
+  "baseUrl": "http://127.0.0.1:63975"
+}

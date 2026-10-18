@@ -1,0 +1,293 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Chikeziri Ohaeri computer science capstone portfolio"><title>Software design and engineering | Chikeziri Ohaeri</title><link rel="stylesheet" href="../style.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Portfolio"><a href="../index.html">Self-assessment</a><a href="../code-review/index.html">Code review</a><a href="../software-design/index.html">Software design</a><a href="../algorithms/index.html">Algorithms</a><a href="../databases/index.html">Databases</a><a href="../evidence.html">Evidence</a></nav><p class="eyebrow">Chikeziri Ohaeri · CS 499 · October 2026</p><h1>Software design and engineering</h1><p class="intro"></p></header><main id="main"><nav aria-label="Page sections"><a href="#narrative">Narrative</a><a href="#source">Compare code</a><a href="#downloads">Downloads</a></nav><section class="downloads" id="downloads"><h2>Artifact files</h2><p><a href="downloads/3-2 Software Design Artifact.zip">Original and enhanced source ZIP</a> · <a href="Software Design Narrative.docx">Word narrative</a></p><p>The ZIP contains full source and verification evidence. Code excerpts below are readable without downloading. This static portfolio presents the application; it does not run the backend.</p></section><article id="narrative"><p>Chikeziri Ohaeri<br>CS 499 | 3-2 Milestone Two Narrative | October 18, 2026</p>
+<h2>Artifact and Purpose</h2>
+<p>Travlr Getaways is my CS 465 full stack application, built with MongoDB, Express, Angular, and Node.js. Its repository records a completed portfolio project commit on August 24, 2026. The original application provides a customer website and an administrative trip-management interface. I selected it because improving one connected application can show how backend design decisions affect API behavior, persistence, and client compatibility. This enhancement follows the Module One plan approved by Joseph Conlan and the planned changes discussed in the Module Two code review.</p>
+<h2>Implemented Changes</h2>
+<p>The original trip controller combined HTTP handling, validation, and database calls. The enhanced version separates those responsibilities. The controller translates requests and responses, the service validates inputs and applies use-case rules, and the repository contains Mongoose operations. Explicit factories allow dependencies to be replaced during tests without replacing the real application behavior under examination. This structure adds files and interfaces, but gives each concern a smaller, clearer place to change.</p>
+<p>The service validates trip codes, real dates, coherent night/day durations, nonnegative prices, local image filenames, and text lengths. Only approved fields reach persistence. Errors contain stable codes and readable messages without database internals. The JSON boundary rejects malformed or oversized requests. JWT verification limits accepted signing algorithms, and tests exercise missing, invalid, expired, and incorrectly signed tokens. The customer template now escapes descriptions, preventing stored markup from executing. Legacy rich descriptions display as text; retaining rich formatting would require a tested sanitization policy.</p>
+<h2>Verification and Technical Reflection</h2>
+<p>The local run passed 25 backend tests with no failures or skips. These include the original regression checks and new behavioral tests covering validation, CRUD, safe errors, real JWT verification, and escaped rendering. A separate harness ran 15 checks against a real temporary MongoDB 8.2.6 instance, including registration, login, duplicate-code rejection, CRUD, rejected negative prices, and persistence after a database reconnect and HTTP server restart. The Angular production build also succeeded. Logs and the integration JSON are supplied as supporting evidence.</p>
+<p>A key technical challenge was preserving the client contract while tightening validation. The Angular form can return model metadata such as _id, so the service excludes unknown fields rather than rejecting the whole request. The existing empty-list 404 behavior is retained to avoid an unrelated client change. The first Angular build exposed macOS-specific installed dependencies; a clean Windows installation resolved that environment issue. These results illustrate why a refactor should verify behavior at more than one layer and why installed dependencies should not be treated as portable source files.</p>
+<p>The work also clarifies the boundary between authentication and authorization. The inherited application allows any registered user to modify trips. Successful negative JWT tests establish rejection of unauthenticated writes; they do not establish role-based access control. Public registration, production rate limiting, and identity provisioning remain limitations. Database schema constraints and index analysis are implemented in the separate cumulative Module Five version. This scope keeps the current design enhancement distinct from later persistence work.</p>
+<h2>Course Outcomes and Feedback</h2>
+<p>This enhancement supplies substantial evidence for outcome 4 through a working layered design and repeatable checks, and for outcome 5 through constrained inputs, safe failures, and escaped output. Documentation, comments, and the narrative support outcome 2. The approved plan and earlier code review support outcome 1, and the software-design milestone feedback was positive with no technical correction requested. Outcome 3 is demonstrated primarily by the separately completed ranking enhancement. The outcome coverage plan is unchanged. The instructor praised the code review analysis and presentation and requested no technical revision; the software-design milestone subsequently received 36/40, with the deduction for lateness.</p>
+<p>The implementation demonstrates a practical lesson: improved structure is valuable when it makes responsibilities and verification clearer. More layers alone do not prove quality. Here, the separation allows validation to be tested before persistence and allows HTTP behavior to be checked with both isolated storage and MongoDB. The evidence supports those specific improvements while keeping unresolved production concerns visible.</p>
+<h2>Portfolio Revision Note</h2>
+<p>October 18, 2026: Instructor feedback was reviewed. The software-design milestone received 36/40, with positive feedback on the overview and category alignment; the deduction was for lateness. No technical correction was requested. The accepted implementation is preserved. This final portfolio copy retains the accepted technical work and adds consistent navigation and access to its evidence. The separate Module Five database version builds on both enhancements.</p>
+<p>AI use acknowledgment: OpenAI Codex assisted with research, drafting, code development, testing, and document preparation. The technical checks were executed with AI assistance. I am responsible for reviewing the work, understanding the implementation, and ensuring that the final submission accurately reflects my experience.</p></article><section id="source"><h2>Original and enhanced code</h2><details><summary>Original controller</summary><pre><code>const Trip = require(&#x27;../models/travlr&#x27;);
+
+const tripFields = [
+  &#x27;code&#x27;,
+  &#x27;name&#x27;,
+  &#x27;length&#x27;,
+  &#x27;start&#x27;,
+  &#x27;resort&#x27;,
+  &#x27;perPerson&#x27;,
+  &#x27;image&#x27;,
+  &#x27;description&#x27;,
+];
+
+function tripPayload(body = {}) {
+  return tripFields.reduce((payload, field) =&gt; {
+    if (body[field] !== undefined) {
+      payload[field] = body[field];
+    }
+    return payload;
+  }, {});
+}
+
+function requiredFieldsMissing(payload) {
+  return tripFields.filter((field) =&gt; (
+    payload[field] === undefined
+    || payload[field] === null
+    || (typeof payload[field] === &#x27;string&#x27; &amp;&amp; payload[field].trim() === &#x27;&#x27;)
+  ));
+}
+
+function databaseError(res, error, action) {
+  if (error?.name === &#x27;ValidationError&#x27; || error?.name === &#x27;CastError&#x27;) {
+    return res.status(400).json({ message: &#x27;Invalid trip data&#x27;, details: error.message });
+  }
+
+  if (error?.code === 11000) {
+    return res.status(409).json({ message: &#x27;A trip with that code already exists&#x27; });
+  }
+
+  return res.status(500).json({ message: `Unable to ${action} trip` });
+}
+
+function createTripsController(TripModel) {
+  async function tripsList(req, res) {
+    try {
+      const trips = await TripModel.find({});
+
+      if (trips.length === 0) {
+        return res.status(404).json({ message: &#x27;No trips found&#x27; });
+      }
+
+      return res.status(200).json(trips);
+    } catch (error) {
+      return res.status(500).json({ message: &#x27;Unable to retrieve trips&#x27; });
+    }
+  }
+
+  async function tripsFindByCode(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    try {
+      const trip = await TripModel.findOne({ code: tripCode });
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json(trip);
+    } catch (error) {
+      return res.status(500).json({ message: &#x27;Unable to retrieve trip&#x27; });
+    }
+  }
+
+  async function tripsAddTrip(req, res) {
+    const payload = tripPayload(req.body);
+    const missingFields = requiredFieldsMissing(payload);
+
+    if (missingFields.length &gt; 0) {
+      return res.status(400).json({
+        message: `Missing required trip fields: ${missingFields.join(&#x27;, &#x27;)}`,
+      });
+    }
+
+    try {
+      const trip = await TripModel.create(payload);
+      return res.status(201).json(trip);
+    } catch (error) {
+      return databaseError(res, error, &#x27;create&#x27;);
+    }
+  }
+
+  async function tripsUpdateTrip(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    const payload = tripPayload(req.body);
+    const missingFields = requiredFieldsMissing(payload);
+
+    if (missingFields.length &gt; 0) {
+      return res.status(400).json({
+        message: `Missing required trip fields: ${missingFields.join(&#x27;, &#x27;)}`,
+      });
+    }
+
+    try {
+      const trip = await TripModel.findOneAndUpdate(
+        { code: tripCode },
+        payload,
+        { returnDocument: &#x27;after&#x27;, runValidators: true },
+      );
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json(trip);
+    } catch (error) {
+      return databaseError(res, error, &#x27;update&#x27;);
+    }
+  }
+
+  async function tripsDeleteTrip(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    try {
+      const trip = await TripModel.findOneAndDelete({ code: tripCode });
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json({ message: `Trip ${tripCode} deleted` });
+    } catch (error) {
+      return databaseError(res, error, &#x27;delete&#x27;);
+    }
+  }
+
+  return {
+    tripsList,
+    tripsFindByCode,
+    tripsAddTrip,
+    tripsUpdateTrip,
+    tripsDeleteTrip,
+  };
+}
+
+module.exports = {
+  ...createTripsController(Trip),
+  createTripsController,
+};
+</code></pre></details><details><summary>Enhanced app_api/controllers/trips.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 3 | 2026-09-27
+ * AI-assisted HTTP adapter. Delegate validated use cases to the service.
+ */
+const Trip = require(&#x27;../models/travlr&#x27;);
+const { createTripsRepository } = require(&#x27;../repositories/trips&#x27;);
+const { createTripsService } = require(&#x27;../services/trips&#x27;);
+const { sendApiError } = require(&#x27;../errors/api-error&#x27;);
+function createTripHandlers(service) {
+  const handle = (status, action) =&gt; async (req, res) =&gt; {
+    try { return res.status(status).json(await action(req)); }
+    catch (error) { return sendApiError(res, error); }
+  };
+  return {
+    tripsList: handle(200, () =&gt; service.list()),
+    tripsFindByCode: handle(200, (req) =&gt; service.find(req.params?.tripCode)),
+    tripsAddTrip: handle(201, (req) =&gt; service.create(req.body)),
+    tripsUpdateTrip: handle(200, (req) =&gt; service.update(req.params?.tripCode, req.body)),
+    tripsDeleteTrip: handle(200, (req) =&gt; service.remove(req.params?.tripCode)),
+  };
+}
+// Retain the injectable factory so the original regression tests remain useful.
+function createTripsController(model) { return createTripHandlers(createTripsService(createTripsRepository(model))); }
+module.exports = { ...createTripsController(Trip), createTripsController, createTripHandlers };
+</code></pre></details><details><summary>Enhanced app_api/services/trips.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 3 | 2026-09-27
+ * AI-assisted trip use cases. Preserve the legacy empty-list 404 contract.
+ * Validation occurs before repository calls; HTTP formatting stays elsewhere.
+ */
+const { ApiError } = require(&#x27;../errors/api-error&#x27;);
+const { tripCode, tripPayload } = require(&#x27;../validation/trip&#x27;);
+const requireFound = (trip) =&gt; {
+  if (!trip) throw new ApiError(404, &#x27;TRIP_NOT_FOUND&#x27;, &#x27;Trip not found&#x27;);
+  return trip;
+};
+function createTripsService(repository) {
+  return {
+    async list() {
+      const trips = await repository.list();
+      if (!trips.length) throw new ApiError(404, &#x27;NO_TRIPS&#x27;, &#x27;No trips found&#x27;);
+      return trips;
+    },
+    async find(code) { return requireFound(await repository.find(tripCode(code))); },
+    async create(body) { return repository.create(tripPayload(body)); },
+    async update(code, body) {
+      const validCode = tripCode(code), payload = tripPayload(body);
+      return requireFound(await repository.update(validCode, payload));
+    },
+    async remove(code) {
+      const validCode = tripCode(code);
+      requireFound(await repository.remove(validCode));
+      return { message: `Trip ${validCode} deleted` };
+    },
+  };
+}
+module.exports = { createTripsService };
+</code></pre></details><details><summary>Enhanced app_api/repositories/trips.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 3 | 2026-09-27
+ * AI-assisted Mongoose adapter. Services depend on this contract, not queries.
+ */
+function createTripsRepository(Trip) {
+  return {
+    list: () =&gt; Trip.find({}),
+    find: (code) =&gt; Trip.findOne({ code }),
+    create: (payload) =&gt; Trip.create(payload),
+    update: (code, payload) =&gt; Trip.findOneAndUpdate({ code }, payload, { returnDocument: &#x27;after&#x27;, runValidators: true }),
+    remove: (code) =&gt; Trip.findOneAndDelete({ code }),
+  };
+}
+module.exports = { createTripsRepository };
+</code></pre></details><details><summary>Enhanced app_api/validation/trip.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 3 | 2026-09-27
+ * Validate at the service boundary. Retain the original string schema and client
+ * payload shape; database constraints remain the Module 5 enhancement.
+ * AI assisted; the student must review this implementation before submission.
+ */
+const { ApiError } = require(&#x27;../errors/api-error&#x27;);
+const fields = [&#x27;code&#x27;, &#x27;name&#x27;, &#x27;length&#x27;, &#x27;start&#x27;, &#x27;resort&#x27;, &#x27;perPerson&#x27;, &#x27;image&#x27;, &#x27;description&#x27;];
+const invalid = (message) =&gt; { throw new ApiError(400, &#x27;INVALID_TRIP&#x27;, message); };
+function tripCode(value) {
+  if (typeof value !== &#x27;string&#x27; || !/^[A-Za-z0-9_-]{1,40}$/.test(value.trim())) invalid(&#x27;Trip code must contain 1 to 40 letters, digits, underscores or hyphens&#x27;);
+  return value.trim();
+}
+function durationDays(value) {
+  if (typeof value !== &#x27;string&#x27;) return NaN;
+  const match = /^(\d+) nights?\s*\/\s*(\d+) days?$/.exec(value.trim());
+  if (!match) return NaN;
+  const nights = Number(match[1]), days = Number(match[2]);
+  return Number.isSafeInteger(days) &amp;&amp; days &gt;= 1 &amp;&amp; days &lt;= 366 &amp;&amp; nights === days - 1 ? days : NaN;
+}
+function price(value) {
+  const text = typeof value === &#x27;number&#x27; ? String(value) : value;
+  if (typeof text !== &#x27;string&#x27; || !/^\d{1,7}(\.\d{1,2})?$/.test(text.trim())) return NaN;
+  const number = Number(text);
+  return Number.isFinite(number) &amp;&amp; number &gt;= 0 &amp;&amp; number &lt;= 1000000 ? number : NaN;
+}
+function tripPayload(body) {
+  if (!body || typeof body !== &#x27;object&#x27; || Array.isArray(body)) invalid(&#x27;Trip body must be an object&#x27;);
+  const payload = {};
+  for (const field of fields) {
+    let value = body[field];
+    if (field === &#x27;start&#x27; &amp;&amp; value instanceof Date &amp;&amp; Number.isFinite(value.getTime())) value = value.toISOString();
+    if (field === &#x27;perPerson&#x27; &amp;&amp; typeof value === &#x27;number&#x27;) value = String(value);
+    if (typeof value !== &#x27;string&#x27; || !value.trim()) invalid(`Required trip field: ${field}`);
+    payload[field] = value.trim();
+  }
+  payload.code = tripCode(payload.code);
+  for (const field of [&#x27;name&#x27;, &#x27;resort&#x27;]) if (payload[field].length &gt; 200) invalid(`${field} must be at most 200 characters`);
+  if (!Number.isFinite(durationDays(payload.length))) invalid(&#x27;Length must use matching nights / days, from 1 to 366 days&#x27;);
+  if (!Number.isFinite(price(payload.perPerson))) invalid(&#x27;Price must be between 0 and 1000000 with at most two decimal places&#x27;);
+  // Reject impossible dates before Date.parse can normalize them.
+  const date = payload.start, day = date.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z)?$/.test(date)
+      || !Number.isFinite(Date.parse(date)) || new Date(day).toISOString().slice(0, 10) !== day) invalid(&#x27;Start must be a valid ISO date or UTC timestamp&#x27;);
+  if (!/^[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/i.test(payload.image) || payload.image.length &gt; 100) invalid(&#x27;Image must be a local image filename&#x27;);
+  if (payload.description.length &gt; 5000) invalid(&#x27;Description must be at most 5000 characters&#x27;);
+  // Only these known fields cross into persistence; _id, operators and metadata do not.
+  return payload;
+}
+module.exports = { tripCode, tripPayload, durationDays, price };
+</code></pre></details></section></main><footer>Computer Science Capstone · Southern New Hampshire University<br>AI assistance is acknowledged in the narratives, self-assessment, and code review.</footer></body></html>

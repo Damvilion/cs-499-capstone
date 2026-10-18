@@ -1,0 +1,309 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Chikeziri Ohaeri computer science capstone portfolio"><title>Algorithms and data structures | Chikeziri Ohaeri</title><link rel="stylesheet" href="../style.css"></head><body><a class="skip" href="#main">Skip to content</a><header><nav aria-label="Portfolio"><a href="../index.html">Self-assessment</a><a href="../code-review/index.html">Code review</a><a href="../software-design/index.html">Software design</a><a href="../algorithms/index.html">Algorithms</a><a href="../databases/index.html">Databases</a><a href="../evidence.html">Evidence</a></nav><p class="eyebrow">Chikeziri Ohaeri · CS 499 · October 2026</p><h1>Algorithms and data structures</h1><p class="intro"></p></header><main id="main"><nav aria-label="Page sections"><a href="#narrative">Narrative</a><a href="#source">Compare code</a><a href="#downloads">Downloads</a></nav><section class="downloads" id="downloads"><h2>Artifact files</h2><p><a href="downloads/4-2 Algorithms Artifact.zip">Original and enhanced source ZIP</a> · <a href="Algorithms Narrative.docx">Word narrative</a></p><p>The ZIP contains full source and verification evidence. Code excerpts below are readable without downloading. This static portfolio presents the application; it does not run the backend.</p></section><article id="narrative"><p>Chikeziri Ohaeri<br>CS 499 | 4-2 Milestone Three Narrative | October 18, 2026</p>
+<h2>Artifact and Purpose</h2>
+<p>Travlr Getaways is my CS 465 MongoDB, Express, Angular, and Node.js application. Its public repository records a completed project commit on August 24, 2026. The original artifact supports customer trip browsing and administrative trip management. I selected it for this enhancement because choosing a small set of relevant trips provides a concrete setting for comparing algorithms and explaining time and space tradeoffs. The Module Four version carries forward the verified Module Three controller, service, and repository separation.</p>
+<h2>Implemented Enhancement</h2>
+<p>The application now ranks trips by a budget and a preferred duration. Budget acts as a price ceiling. The score combines affordability at 60% and duration fit at 40%. These weights are explicit demonstration choices, not measured customer preferences. Records with malformed prices or durations are excluded. Scores are ordered from highest to lowest; ties use ascending trip code and then original input order. Rounding occurs only in the display. A new customer page calls a read-only API, explains the scoring rule, and displays matching trips or a clear empty result.</p>
+<p>The full-sort baseline scores all eligible trips, sorts them, and returns the first k. The enhanced algorithm scans the same input while retaining at most k candidates in a bounded min-heap. Its root is the worst retained candidate. A better candidate replaces that root, after which the heap order is restored. A candidate no better than the root can be discarded because k better or equal candidates already exist. The retained subset is finally sorted for display. This invariant explains why the two algorithms should produce the same ordered result.</p>
+<h2>Complexity and Measured Results</h2>
+<p>For n input trips, m eligible trips, and r = min(k, m), full sorting takes O(n + m log m) time and O(m) auxiliary space. Heap selection takes O(n log(k + 1) + r log(r + 1)) time and O(k) auxiliary space for positive k. The final subset sort is included in that bound. A zero-k request returns immediately without a database call. These are ranking costs: the current repository still materializes all n database records, so the complete request has O(n) input storage. Query validation caps API results at 100 and limits the budget and duration before database access.</p>
+<p>The benchmark used seeded synthetic inputs, three warmups, and seven measured repetitions with alternating execution order. Every benchmark result matched the baseline. With 100,000 inputs and k = 5, median sorting time was 41.300 milliseconds and heap time was 25.305 milliseconds. Sorting retained 74,855 scored candidates; the heap retained 5. With 1,000 inputs and k = 1,000, both retained 762 candidates and had similar measured runtime. This shows why a small requested subset matters. Retained counts measure the data structure, not total process memory. Machine load, runtime optimization, and garbage collection affect timing; the benchmark excludes database and browser time and was not run on an otherwise idle machine.</p>
+<h2>Verification and Reflection</h2>
+<p>The complete backend suite passed 31 tests with no failures or skips. It includes hand-calculated scores, deterministic ties, duplicate-code stability, invalid preferences, malformed legacy data, empty input, zero and oversized k, and 120 seeded randomized comparisons with the baseline. Seventeen additional checks passed against real temporary MongoDB 8.2.6, including recommendations over persisted records and rejection of an invalid query. The Angular production build passed. In Chrome, a budget of 1,500 and five preferred days returned Gale Reef followed by Dawson&#x27;s Reef; a budget of 100 produced no matches. The screenshot and raw logs preserve those results.</p>
+<p>The main technical challenge was making the heap comparison agree with the baseline at every boundary. A worst-first heap needs the opposite ordering from the final displayed list. Tie rules must also be applied during replacement, not only at the last sort. Another lesson is that a small auxiliary structure does not remove the cost of retrieving the input. Keeping the database boundary visible prevents an unsupported claim that the entire endpoint uses O(k) memory. Streaming and index work remain separate opportunities for Module Five.</p>
+<h2>Course Outcomes and Remaining Work</h2>
+<p>This enhancement directly supports outcome 3 through algorithm selection, correctness reasoning, and measured time-space tradeoffs. The functioning API and browser feature support outcome 4. Clear explanations, comments, and reproducible records support outcome 2. Bounded inputs and inherited validation support outcome 5. The approved plan and code review provide evidence for outcome 1; the algorithms milestone received 40/40 and the instructor reported no major areas needing improvement. The outcome coverage plan remains unchanged. The instructor requested no technical correction to the earlier code review, and the algorithms milestone feedback has now been incorporated by preserving the accepted implementation. The database enhancement is now prepared separately for Module Five. The final portfolio connects this accepted milestone to the cumulative database enhancement and professional self-assessment.</p>
+<p>AI use acknowledgment: OpenAI Codex assisted with drafting, code changes, source verification, and document preparation.</p>
+<h2>Portfolio Revision Note</h2>
+<p>October 18, 2026: Instructor feedback was reviewed. The algorithms milestone received 40/40. The instructor found the key requirements and skill explanation satisfactory and identified no major areas needing improvement. The accepted implementation is preserved. This final portfolio copy retains the accepted technical work and adds consistent navigation and access to its evidence. The separate Module Five database version builds on both enhancements.</p></article><section id="source"><h2>Original and enhanced code</h2><details><summary>Original controller</summary><pre><code>const Trip = require(&#x27;../models/travlr&#x27;);
+
+const tripFields = [
+  &#x27;code&#x27;,
+  &#x27;name&#x27;,
+  &#x27;length&#x27;,
+  &#x27;start&#x27;,
+  &#x27;resort&#x27;,
+  &#x27;perPerson&#x27;,
+  &#x27;image&#x27;,
+  &#x27;description&#x27;,
+];
+
+function tripPayload(body = {}) {
+  return tripFields.reduce((payload, field) =&gt; {
+    if (body[field] !== undefined) {
+      payload[field] = body[field];
+    }
+    return payload;
+  }, {});
+}
+
+function requiredFieldsMissing(payload) {
+  return tripFields.filter((field) =&gt; (
+    payload[field] === undefined
+    || payload[field] === null
+    || (typeof payload[field] === &#x27;string&#x27; &amp;&amp; payload[field].trim() === &#x27;&#x27;)
+  ));
+}
+
+function databaseError(res, error, action) {
+  if (error?.name === &#x27;ValidationError&#x27; || error?.name === &#x27;CastError&#x27;) {
+    return res.status(400).json({ message: &#x27;Invalid trip data&#x27;, details: error.message });
+  }
+
+  if (error?.code === 11000) {
+    return res.status(409).json({ message: &#x27;A trip with that code already exists&#x27; });
+  }
+
+  return res.status(500).json({ message: `Unable to ${action} trip` });
+}
+
+function createTripsController(TripModel) {
+  async function tripsList(req, res) {
+    try {
+      const trips = await TripModel.find({});
+
+      if (trips.length === 0) {
+        return res.status(404).json({ message: &#x27;No trips found&#x27; });
+      }
+
+      return res.status(200).json(trips);
+    } catch (error) {
+      return res.status(500).json({ message: &#x27;Unable to retrieve trips&#x27; });
+    }
+  }
+
+  async function tripsFindByCode(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    try {
+      const trip = await TripModel.findOne({ code: tripCode });
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json(trip);
+    } catch (error) {
+      return res.status(500).json({ message: &#x27;Unable to retrieve trip&#x27; });
+    }
+  }
+
+  async function tripsAddTrip(req, res) {
+    const payload = tripPayload(req.body);
+    const missingFields = requiredFieldsMissing(payload);
+
+    if (missingFields.length &gt; 0) {
+      return res.status(400).json({
+        message: `Missing required trip fields: ${missingFields.join(&#x27;, &#x27;)}`,
+      });
+    }
+
+    try {
+      const trip = await TripModel.create(payload);
+      return res.status(201).json(trip);
+    } catch (error) {
+      return databaseError(res, error, &#x27;create&#x27;);
+    }
+  }
+
+  async function tripsUpdateTrip(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    const payload = tripPayload(req.body);
+    const missingFields = requiredFieldsMissing(payload);
+
+    if (missingFields.length &gt; 0) {
+      return res.status(400).json({
+        message: `Missing required trip fields: ${missingFields.join(&#x27;, &#x27;)}`,
+      });
+    }
+
+    try {
+      const trip = await TripModel.findOneAndUpdate(
+        { code: tripCode },
+        payload,
+        { returnDocument: &#x27;after&#x27;, runValidators: true },
+      );
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json(trip);
+    } catch (error) {
+      return databaseError(res, error, &#x27;update&#x27;);
+    }
+  }
+
+  async function tripsDeleteTrip(req, res) {
+    const tripCode = req.params?.tripCode?.trim();
+
+    if (!tripCode) {
+      return res.status(400).json({ message: &#x27;Trip code is required&#x27; });
+    }
+
+    try {
+      const trip = await TripModel.findOneAndDelete({ code: tripCode });
+
+      if (!trip) {
+        return res.status(404).json({ message: `Trip ${tripCode} not found` });
+      }
+
+      return res.status(200).json({ message: `Trip ${tripCode} deleted` });
+    } catch (error) {
+      return databaseError(res, error, &#x27;delete&#x27;);
+    }
+  }
+
+  return {
+    tripsList,
+    tripsFindByCode,
+    tripsAddTrip,
+    tripsUpdateTrip,
+    tripsDeleteTrip,
+  };
+}
+
+module.exports = {
+  ...createTripsController(Trip),
+  createTripsController,
+};
+</code></pre></details><details><summary>Enhanced app_api/algorithms/ranking.js</summary><pre><code>/** Chikeziri Ohaeri | CS 499 Module 4 | 2026-09-27 | AI-assisted.
+ * Rank eligible trips by affordability (60%) and duration fit (40%).
+ * Larger scores win; ties use ascending code, then original input order.
+ * The heap keeps the WORST retained candidate at its root for replacement.
+ * For n inputs, m eligible and r=min(k,m): sort O(n+m log m), O(m) space;
+ * heap O(n log(k+1)+r log(r+1)), O(k) auxiliary space, excluding input.
+ * Database list materialization still takes O(n) memory outside this module.
+ */
+const { ApiError } = require(&#x27;../errors/api-error&#x27;);
+function preferences(query) {
+  const bad = () =&gt; { throw new ApiError(400, &#x27;INVALID_PREFERENCES&#x27;, &#x27;Use budget &gt; 0 and &lt;= 1000000, days 1-366, and k 0-100; no other parameters.&#x27;); };
+  if (!query || Object.keys(query).some(key =&gt; ![&#x27;budget&#x27;,&#x27;days&#x27;,&#x27;k&#x27;].includes(key))) bad();
+  const raw = { budget: query.budget, days: query.days, k: query.k ?? &#x27;5&#x27; };
+  for (const value of Object.values(raw)) if (typeof value !== &#x27;string&#x27; || !/^\d+(?:\.\d{1,2})?$/.test(value)) bad();
+  const result = Object.fromEntries(Object.entries(raw).map(([key,value])=&gt;[key,Number(value)]));
+  if (!(result.budget &gt; 0 &amp;&amp; result.budget &lt;= 1e6) || !Number.isInteger(result.days) || result.days &lt; 1 || result.days &gt; 366 || !Number.isInteger(result.k) || result.k &lt; 0 || result.k &gt; 100) bad();
+  return result;
+}
+function validOptions({budget,days,k}) {
+  if (!Number.isFinite(budget) || budget &lt;= 0 || !Number.isInteger(days) || days &lt; 1 || !Number.isInteger(k) || k &lt; 0) throw new RangeError(&#x27;Invalid ranking options&#x27;);
+}
+function candidate(trip,index,{budget,days}) {
+  if (!trip || typeof trip.code !== &#x27;string&#x27; || !/^[A-Za-z0-9_-]{1,40}$/.test(trip.code)) return null;
+  const price = String(trip.perPerson ?? &#x27;&#x27;);
+  const duration = /^(\d+) nights?\s*\/\s*(\d+) days?$/.exec(String(trip.length ?? &#x27;&#x27;));
+  if (!/^\d+(?:\.\d{1,2})?$/.test(price) || !duration) return null;
+  const cost = Number(price), nights = Number(duration[1]), actualDays = Number(duration[2]);
+  if (!Number.isFinite(cost) || cost &gt; budget || actualDays &lt; 1 || actualDays &gt; 366 || nights !== actualDays-1) return null;
+  const score = 0.6*(1-cost/budget)+0.4*(1-Math.abs(actualDays-days)/Math.max(actualDays,days));
+  return {trip,score,index};
+}
+// Negative means a is better than b. No rounding before ordering.
+function compare(a,b) { return b.score-a.score || (a.trip.code &lt; b.trip.code ? -1 : a.trip.code &gt; b.trip.code ? 1 : 0) || a.index-b.index; }
+function result(items,stats) { return {results:items.map(({trip,score})=&gt;({trip,score})),stats}; }
+function rankSort(trips,options) {
+  validOptions(options);
+  const stats={examined:0,eligible:0,maxRetained:0,comparisons:0};
+  if (!options.k) return result([],stats);
+  const scored=[];
+  for (const trip of trips) { const c=candidate(trip,stats.examined++,options); if(c) scored.push(c); }
+  stats.eligible=stats.maxRetained=scored.length;
+  scored.sort((a,b)=&gt;{stats.comparisons++;return compare(a,b);});
+  return result(scored.slice(0,options.k),stats);
+}
+function rankHeap(trips,options) {
+  validOptions(options);
+  const stats={examined:0,eligible:0,maxRetained:0,comparisons:0};
+  if (!options.k) return result([],stats);
+  const heap=[];
+  const cmp=(a,b)=&gt;{stats.comparisons++;return compare(a,b);};
+  for (const trip of trips) {
+    const c=candidate(trip,stats.examined++,options);
+    if(!c) continue;
+    stats.eligible++;
+    if(heap.length &lt; options.k) {
+      heap.push(c); let i=heap.length-1;
+      while(i&gt;0) { const parent=(i-1)&gt;&gt;1; if(cmp(heap[i],heap[parent])&lt;=0) break; [heap[i],heap[parent]]=[heap[parent],heap[i]]; i=parent; }
+      stats.maxRetained=Math.max(stats.maxRetained,heap.length);
+    } else if(cmp(c,heap[0])&lt;0) {
+      heap[0]=c; let i=0;
+      while(true) {
+        const left=2*i+1, right=left+1; let worst=i;
+        if(left&lt;heap.length &amp;&amp; cmp(heap[left],heap[worst])&gt;0) worst=left;
+        if(right&lt;heap.length &amp;&amp; cmp(heap[right],heap[worst])&gt;0) worst=right;
+        if(worst===i) break;
+        [heap[i],heap[worst]]=[heap[worst],heap[i]]; i=worst;
+      }
+    }
+  }
+  heap.sort(cmp); // The retained subset must also be returned in best-first order.
+  return result(heap,stats);
+}
+module.exports={preferences,rankSort,rankHeap};
+</code></pre></details><details><summary>Enhanced test/ranking.test.js</summary><pre><code>/** AI-assisted behavioral checks, Chikeziri Ohaeri, CS 499, 2026-09-27. */
+const test=require(&#x27;node:test&#x27;), assert=require(&#x27;node:assert/strict&#x27;);
+const {preferences,rankSort,rankHeap}=require(&#x27;../app_api/algorithms/ranking&#x27;);
+const {createTripsService}=require(&#x27;../app_api/services/trips&#x27;);
+const trip=(code,price=500,days=5)=&gt;({code,name:code,perPerson:String(price),length:`${days-1} nights / ${days} days`});
+const opts={budget:1000,days:5,k:2};
+test(&#x27;known score, budget exclusion, exact ranking and unchanged input&#x27;,()=&gt;{
+ const input=[trip(&#x27;B&#x27;,500),trip(&#x27;A&#x27;,100),trip(&#x27;C&#x27;,1200),trip(&#x27;D&#x27;,0,10)]; const saved=JSON.stringify(input);
+ for(const fn of [rankSort,rankHeap]) {const out=fn(input,opts);assert.deepEqual(out.results.map(x=&gt;x.trip.code),[&#x27;A&#x27;,&#x27;D&#x27;]);assert.ok(Math.abs(out.results[0].score-.94)&lt;1e-12);assert.equal(out.stats.eligible,3);}
+ assert.equal(JSON.stringify(input),saved);
+});
+test(&#x27;ties are deterministic by code and stable input order for duplicate codes&#x27;,()=&gt;{
+ const input=[trip(&#x27;B&#x27;),{...trip(&#x27;A&#x27;),name:&#x27;first&#x27;}, {...trip(&#x27;A&#x27;),name:&#x27;second&#x27;},trip(&#x27;C&#x27;)];
+ for(const fn of [rankSort,rankHeap]) assert.deepEqual(fn(input,opts).results.map(x=&gt;x.trip.name),[&#x27;first&#x27;,&#x27;second&#x27;]);
+ assert.deepEqual(rankHeap([trip(&#x27;Z&#x27;),trip(&#x27;A&#x27;),trip(&#x27;B&#x27;)],opts).results.map(x=&gt;x.trip.code),[&#x27;A&#x27;,&#x27;B&#x27;]);
+});
+test(&#x27;empty input, zero k, oversized k, malformed legacy records and boundaries&#x27;,()=&gt;{
+ const input=[trip(&#x27;A&#x27;,0,1),trip(&#x27;B&#x27;,1000,366),trip(&#x27;C&#x27;,-1),trip(&#x27;D&#x27;,1,0),{...trip(&#x27;E&#x27;),length:&#x27;4 nights / 7 days&#x27;},null,trip(&#x27;bad code&#x27;),{...trip(&#x27;F&#x27;),perPerson:&#x27;1e2&#x27;}];
+ for(const fn of [rankSort,rankHeap]) {assert.equal(fn([],opts).results.length,0);assert.equal(fn(input,{...opts,k:0}).results.length,0);assert.deepEqual(fn(input,{...opts,k:20}).results.map(x=&gt;x.trip.code),[&#x27;A&#x27;,&#x27;B&#x27;]);assert.throws(()=&gt;fn(input,{...opts,k:-1}),RangeError);}
+});
+test(&#x27;query validation rejects arrays, operators, unknown keys and unbounded values&#x27;,()=&gt;{
+ assert.deepEqual(preferences({budget:&#x27;1000.25&#x27;,days:&#x27;5&#x27;}),{budget:1000.25,days:5,k:5});
+ assert.equal(preferences({budget:&#x27;1&#x27;,days:&#x27;1&#x27;,k:&#x27;0&#x27;}).k,0);
+ for(const query of [{budget:&#x27;0&#x27;,days:&#x27;5&#x27;},{budget:&#x27;100&#x27;,days:&#x27;1.5&#x27;},{budget:&#x27;100&#x27;,days:&#x27;367&#x27;},{budget:&#x27;100&#x27;,days:&#x27;5&#x27;,k:&#x27;101&#x27;},{budget:[&#x27;100&#x27;],days:&#x27;5&#x27;},{budget:{$gt:0},days:&#x27;5&#x27;},{budget:&#x27;1e3&#x27;,days:&#x27;5&#x27;},{budget:&#x27;100&#x27;,days:&#x27;5&#x27;,where:&#x27;x&#x27;}]) assert.throws(()=&gt;preferences(query),e=&gt;e.status===400);
+});
+test(&#x27;seeded randomized heap results equal sort baseline and retain no more than k&#x27;,()=&gt;{
+ let seed=123456789;const random=()=&gt;{seed=(Math.imul(1664525,seed)+1013904223)&gt;&gt;&gt;0;return seed/4294967296;};
+ for(let run=0;run&lt;120;run++) {
+  const input=Array.from({length:Math.floor(random()*350)},(_,i)=&gt;trip(&#x27;T&#x27;+String(i%200).padStart(4,&#x27;0&#x27;),Math.floor(random()*20)*100,1+Math.floor(random()*30)));
+  const options={budget:100+Math.floor(random()*2000),days:1+Math.floor(random()*30),k:Math.floor(random()*400)};
+  const heap=rankHeap(input,options),sort=rankSort(input,options);assert.deepEqual(heap.results,sort.results);assert.ok(heap.stats.maxRetained&lt;=options.k);assert.equal(heap.stats.maxRetained,Math.min(options.k,heap.stats.eligible));
+ }
+});
+test(&#x27;service rejects bad queries before I/O and handles zero k without storage&#x27;,async()=&gt;{
+ let calls=0;const service=createTripsService({list:async()=&gt;{calls++;return [trip(&#x27;A&#x27;)];}});
+ await assert.rejects(service.recommend({budget:&#x27;-1&#x27;,days:&#x27;5&#x27;}));
+ assert.equal((await service.recommend({budget:&#x27;1000&#x27;,days:&#x27;5&#x27;,k:&#x27;0&#x27;})).results.length,0);assert.equal(calls,0);
+ assert.equal((await service.recommend({budget:&#x27;1000&#x27;,days:&#x27;5&#x27;})).results[0].trip.code,&#x27;A&#x27;);assert.equal(calls,1);
+});
+</code></pre></details><details><summary>Enhanced scripts/benchmark-ranking.js</summary><pre><code>/** Reproducible synthetic CPU benchmark; no database/network time included.
+ * Chikeziri Ohaeri, CS 499 Module 4, 2026-09-27. AI-assisted.
+ */
+const {rankSort,rankHeap}=require(&#x27;../app_api/algorithms/ranking&#x27;);
+const {performance}=require(&#x27;node:perf_hooks&#x27;);
+const assert=require(&#x27;node:assert/strict&#x27;),os=require(&#x27;node:os&#x27;),fs=require(&#x27;node:fs&#x27;);
+let seed=4992026; const random=()=&gt;{seed=(Math.imul(seed,1664525)+1013904223)&gt;&gt;&gt;0;return seed/4294967296;};
+const median=a=&gt;[...a].sort((x,y)=&gt;x-y)[Math.floor(a.length/2)];
+const report={timestamp:new Date().toISOString(),node:process.version,platform:process.platform,cpu:os.cpus()[0].model,seed,units:&#x27;milliseconds&#x27;,repetitions:7,memoryMetric:&#x27;maximum simultaneously retained scored candidates, not process heap bytes&#x27;,cases:[]};
+for(const [n,k] of [[1000,5],[10000,5],[100000,5],[100000,50],[1000,1000]]) {
+ const input=Array.from({length:n},(_,i)=&gt;{const days=1+Math.floor(random()*20);return{code:&#x27;T&#x27;+String(i).padStart(6,&#x27;0&#x27;),perPerson:String(Math.floor(random()*200000)/100),length:`${days-1} nights / ${days} days`};});
+ const options={budget:1500,days:7,k};
+ const expected=rankSort(input,options);const checked=rankHeap(input,options);assert.deepEqual(checked.results,expected.results);
+ for(let warm=0;warm&lt;3;warm++){rankSort(input,options);rankHeap(input,options);}
+ const sortMs=[],heapMs=[];
+ for(let run=0;run&lt;7;run++) for(const name of (run%2?[&#x27;heap&#x27;,&#x27;sort&#x27;]:[&#x27;sort&#x27;,&#x27;heap&#x27;])) {const begin=performance.now();(name===&#x27;sort&#x27;?rankSort:rankHeap)(input,options);(name===&#x27;sort&#x27;?sortMs:heapMs).push(performance.now()-begin);}
+ report.cases.push({n,k,eligible:checked.stats.eligible,identicalResults:true,sortMs,heapMs,sortMedianMs:median(sortMs),heapMedianMs:median(heapMs),sortRetained:expected.stats.maxRetained,heapRetained:checked.stats.maxRetained,sortComparisons:expected.stats.comparisons,heapComparisons:checked.stats.comparisons});
+}
+const output=process.argv[2]||&#x27;benchmark.json&#x27;;fs.writeFileSync(output,JSON.stringify(report,null,2));console.table(report.cases.map(({n,k,sortMedianMs,heapMedianMs,sortRetained,heapRetained})=&gt;({n,k,sortMedianMs,heapMedianMs,sortRetained,heapRetained})));
+</code></pre></details></section></main><footer>Computer Science Capstone · Southern New Hampshire University<br>AI assistance is acknowledged in the narratives, self-assessment, and code review.</footer></body></html>

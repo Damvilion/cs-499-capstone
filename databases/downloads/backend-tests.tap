@@ -1,0 +1,42 @@
+✔ JWT configuration rejects a missing or weak signing secret (0.9523ms)
+✔ registration validates required fields and returns a token (1.3391ms)
+✔ login validates input and reports invalid credentials (0.1878ms)
+✔ tripsList returns all trips with HTTP 200 (224.7462ms)
+✔ tripsList returns a JSON 404 when the collection is empty (0.153ms)
+✔ tripsFindByCode returns one matching trip (0.1416ms)
+✔ tripsFindByCode validates the code and reports a missing trip (0.1365ms)
+✔ tripsAddTrip creates a complete trip and returns HTTP 201 (0.881ms)
+✔ tripsAddTrip rejects missing fields and duplicate trip codes (0.2353ms)
+✔ tripsUpdateTrip persists and returns the updated trip (0.2981ms)
+✔ tripsUpdateTrip returns HTTP 404 when the trip does not exist (0.339ms)
+✔ tripsDeleteTrip deletes an existing trip and reports a missing trip (0.3446ms)
+✔ database failures produce JSON HTTP 500 responses (0.2183ms)
+✔ JWT middleware rejects missing and invalid bearer tokens (0.8011ms)
+✔ JWT middleware accepts a valid bearer token and exposes its claims (3.0007ms)
+✔ user passwords are salted and hashed and can be verified (76.7565ms)
+✔ generateJwt signs an expiring token without password data (24.9959ms)
+✔ the trips router maps all five CRUD requests (72.3881ms)
+✔ unknown API routes return a JSON 404 (5.8981ms)
+✔ the public travel controller gets database trips through the REST API (0.9573ms)
+✔ the public travel controller forwards an API failure (0.253ms)
+✔ validation rejects malformed fields before persistence (1.8003ms)
+✔ validation preserves client format, trims strings and excludes unknown fields (0.1599ms)
+✔ HTTP trip workflow uses real JWT verification and safe errors (351.9281ms)
+✔ customer rendering escapes stored active content (5.4975ms)
+✔ known score, budget exclusion, exact ranking and unchanged input (2.2653ms)
+✔ ties are deterministic by code and stable input order for duplicate codes (0.3212ms)
+✔ empty input, zero k, oversized k, malformed legacy records and boundaries (0.5269ms)
+✔ query validation rejects arrays, operators, unknown keys and unbounded values (0.4263ms)
+✔ seeded randomized heap results equal sort baseline and retain no more than k (26.6895ms)
+✔ service rejects bad queries before I/O and handles zero k without storage (0.472ms)
+✔ search includes the complete last day and defaults to 20 (1.4671ms)
+✔ search rejects operators, duplicate scalars, impossible dates and excessive limits before persistence (1.6378ms)
+✔ empty searches are successful empty results (0.5789ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 803.0983
